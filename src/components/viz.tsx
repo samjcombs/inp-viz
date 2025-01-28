@@ -92,7 +92,7 @@ const SurveyVisualization = () => {
         textareaRef.current.style.height = 'auto';
         textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
       }
-    }, [isEditMode, text]);
+    }, [text]);
 
     if (isEditMode) {
       return (
@@ -304,7 +304,7 @@ const SurveyVisualization = () => {
 
   if (error) {
     return (
-      <Alert variant="destructive" className="w-full" style={{ backgroundColor: BRAND_COLORS.burgundy }}>
+      <Alert className="w-full" style={{ backgroundColor: BRAND_COLORS.burgundy }}>
         <AlertDescription className="text-white">{error}</AlertDescription>
       </Alert>
     );
@@ -312,7 +312,7 @@ const SurveyVisualization = () => {
 
   if (!executiveSummary) {
     return (
-      <Alert variant="destructive" className="w-full" style={{ backgroundColor: BRAND_COLORS.burgundy }}>
+      <Alert className="w-full" style={{ backgroundColor: BRAND_COLORS.burgundy }}>
         <AlertDescription className="text-white">Unable to process survey data</AlertDescription>
       </Alert>
     );

@@ -1,15 +1,27 @@
 import * as React from "react"
+import { cn } from "@/lib/utils"
+
+interface AlertProps {
+  className?: string;
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+}
 
 const Alert = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { variant?: "default" | "destructive" }
->(({ className, variant = "default", ...props }, ref) => (
+  AlertProps
+>(({ className, children, ...props }, ref) => (
   <div
     ref={ref}
     role="alert"
-    className={className}
+    className={cn(
+      "relative w-full rounded-lg border p-4",
+      className
+    )}
     {...props}
-  />
+  >
+    {children}
+  </div>
 ))
 Alert.displayName = "Alert"
 
