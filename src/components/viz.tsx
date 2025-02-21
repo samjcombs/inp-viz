@@ -65,6 +65,7 @@ interface TooltipProps {
 type LikertResponse = 'Strongly Agree' | 'Agree' | 'Somewhat Agree' | 'Neutral' | 'Somewhat Disagree' | 'Disagree' | 'Strongly Disagree';
 
 const SurveyVisualization = () => {
+  const [selectedSurvey, setSelectedSurvey] = useState<'opening' | 'closing'>('opening');
   const [data, setData] = useState<SurveyData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,6 +73,7 @@ const SurveyVisualization = () => {
   const [executiveSummary, setExecutiveSummary] = useState<ExecutiveSummary | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const componentRef = useRef<HTMLDivElement>(null);
+  const [isSwitching, setIsSwitching] = useState(false);
 
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -171,6 +173,68 @@ const SurveyVisualization = () => {
     };
   };
 
+  const getSurveyNarrativeSummary = (selectedSurvey: 'opening' | 'closing', executiveSummary: ExecutiveSummary) => {
+    if (selectedSurvey === 'opening') {
+      return [
+        `The Black History Retreat survey results reveal a highly successful event, with ${executiveSummary.totalResponses} participants providing comprehensive feedback. The overall satisfaction rate of ${executiveSummary.overallSatisfaction}% 'Strongly Agree' responses across all categories indicates strong program effectiveness. Notably, the historical site visits and panel discussions received particularly positive feedback, with over ${executiveSummary.highestRated.percentage}% of participants strongly agreeing about their value.`,
+        "Participants especially appreciated the integration of historical knowledge with contemporary leadership challenges. The visit to Legacy Sites and the panel conversation with community leaders emerged as standout experiences. However, participants indicated a desire for more structured networking opportunities and peer connection time, suggesting an area for future enhancement.",
+        "Key recommendations from participants include increasing dedicated time for peer interaction, developing follow-up support mechanisms, and creating more opportunities for regional cohort building. The feedback suggests that while the content and historical components were highly impactful, the retreat's networking and relationship-building aspects could be expanded in future iterations."
+      ];
+    } else {
+      return [
+        `The Black Futures Retreat survey results demonstrate a transformative experience, with ${executiveSummary.totalResponses} participants sharing their insights. The overall satisfaction rate of ${executiveSummary.overallSatisfaction}% 'Strongly Agree' responses highlights the program's success. The futurism-focused sessions and DC-based experiences were particularly well-received, with ${executiveSummary.highestRated.percentage}% of participants strongly agreeing about their effectiveness.`,
+        "Participants found significant value in exploring futurism as a leadership tool and connecting it to their current work. The Anacostia tour, Frederick Douglass House visit, and panel discussions with local leaders provided a powerful framework for understanding both historical context and future possibilities. The combination of theoretical learning and practical application was highlighted as particularly effective.",
+        "Feedback emphasized the impact of connecting historical learning from Montgomery with future-focused leadership strategies. Participants appreciated the balance of policy discussions, leadership development, and community engagement. The retreat successfully bridged past learnings with future applications, though some participants suggested more time for peer-to-peer discussion and practical application exercises."
+      ];
+    }
+  };
+
+  const getProgramReviewSections = (selectedSurvey: 'opening' | 'closing') => {
+    if (selectedSurvey === 'opening') {
+      return {
+        impact: [
+          "Analysis of highest-rated activities and their key success factors",
+          "Review of participant engagement levels across different sessions",
+          "Discussion of historical knowledge integration effectiveness",
+          "Assessment of connection-building opportunities"
+        ],
+        enhancement: [
+          "Evaluation of participant feedback on session timing and pacing",
+          "Review of networking and relationship-building structures",
+          "Discussion of support mechanisms for implementation",
+          "Analysis of logistics and operational improvements"
+        ],
+        planning: [
+          "Integration of successful elements into future retreats",
+          "Development of follow-up support strategies",
+          "Planning for enhanced peer connection opportunities",
+          "Discussion of resource allocation and timeline adjustments"
+        ]
+      };
+    } else {
+      return {
+        impact: [
+          "Analysis of futurism integration and practical applications",
+          "Review of DC-specific programming effectiveness",
+          "Evaluation of policy and advocacy session impact",
+          "Assessment of historical-future connections made"
+        ],
+        enhancement: [
+          "Review of session timing and content depth",
+          "Analysis of peer learning opportunities",
+          "Evaluation of practical application exercises",
+          "Discussion of post-retreat support needs"
+        ],
+        planning: [
+          "Integration of futurism tools into ongoing work",
+          "Development of policy advocacy strategies",
+          "Planning for continued peer collaboration",
+          "Discussion of regional implementation support"
+        ]
+      };
+    }
+  };
+
   const handlePrint = useReactToPrint({
     documentTitle: "Survey Results",
     contentRef: componentRef,
@@ -209,60 +273,157 @@ const SurveyVisualization = () => {
     handlePrint();
   };
 
+  const SurveySelector = () => (
+    <div className={`fixed top-0 left-0 right-0 backdrop-blur-lg p-4 flex justify-between items-center z-50 no-print transition-colors duration-500 ${selectedSurvey === 'opening' ? 'bg-navy/90' : 'bg-burgundy/90'}`}>
+      <button
+        onClick={() => {
+          setIsSwitching(true);
+          setSelectedSurvey(selectedSurvey === 'opening' ? 'closing' : 'opening');
+        }}
+        disabled={isSwitching}
+        className="group flex items-center space-x-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 backdrop-blur-sm hover:bg-white/10 transition-all duration-300"
+      >
+        <svg className="w-4 h-4 text-white/70 group-hover:text-white/90 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+        </svg>
+        <span className="text-sm text-white/70 group-hover:text-white/90 transition-colors duration-300">
+          Switch to {selectedSurvey === 'opening' ? 'Futures' : 'History'} Retreat
+        </span>
+      </button>
+
+      <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
+        <div className="flex items-center space-x-6 px-6 py-2 rounded-xl bg-white/5 border border-white/5 backdrop-blur-sm">
+          <div className="flex items-center space-x-4">
+            <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-500 ${selectedSurvey === 'opening' ? 'bg-teal-400/40' : 'bg-orange-400/40'}`}></div>
+            {isSwitching ? (
+              <div className="text-teal-300 text-sm animate-pulse">Loading...</div>
+            ) : (
+              <div className="flex items-center space-x-6">
+                <div className="text-white/90 text-base font-medium flex items-center space-x-2">
+                  <span>{selectedSurvey === 'opening' ? 'Black History Retreat' : 'Black Futures Retreat'}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${selectedSurvey === 'opening'
+                    ? 'bg-teal-400/20 text-teal-300'
+                    : 'bg-orange-400/20 text-orange-300'
+                    }`}>
+                    {selectedSurvey === 'opening' ? 'History' : 'Futures'}
+                  </span>
+                </div>
+                <div className="h-4 w-px bg-white/10"></div>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-white/50 text-sm">Responses</span>
+                    <span className="text-white/90 text-sm font-medium">{executiveSummary?.totalResponses || 0}</span>
+                  </div>
+                  <div className="h-3 w-px bg-white/10"></div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-white/50 text-sm">Satisfaction</span>
+                    <span className="text-white/90 text-sm font-medium">{executiveSummary?.overallSatisfaction || 0}%</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-500 ${selectedSurvey === 'opening' ? 'bg-teal-400/40' : 'bg-orange-400/40'}`}></div>
+          </div>
+        </div>
+      </div>
+
+      <button
+        onClick={onPrintClick}
+        className="group bg-white/5 border border-white/5 text-white/90 px-4 py-1.5 rounded-lg backdrop-blur-sm hover:bg-white/10 transition-all duration-300 flex items-center space-x-2 text-sm"
+      >
+        <svg className="w-4 h-4 text-white/70 group-hover:text-white/90 transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        <span>Export</span>
+      </button>
+    </div>
+  );
+
   useEffect(() => {
     const loadData = async () => {
       try {
-        const response = await fetch('/survey.csv');
+        setIsSwitching(true);
+        const filename = selectedSurvey === 'opening'
+          ? 'Black+History+Retreat+Survey+(Opening+Survey).csv'
+          : 'Black+Futures+Retreat+Survey+(Closing+Survey).csv';
+
+        const response = await fetch(`/${filename}`);
         const text = await response.text();
 
-        const lines = text.split('\n');
-        const headerIndex = lines.findIndex(line => line.startsWith('"Submitted Date"'));
-
-        if (headerIndex === -1) {
-          throw new Error("Could not find header row");
-        }
-
-        const cleanedCSV = lines.slice(headerIndex).join('\n');
-
-        Papa.parse<SurveyData>(cleanedCSV, {
+        Papa.parse<SurveyData>(text, {
           header: true,
           skipEmptyLines: 'greedy',
+          encoding: 'UTF-8',
+          transformHeader: (header) => {
+            // Clean up header by removing quotes and special characters
+            return header.replace(/["']/g, '').trim();
+          },
+          transform: (value) => {
+            // Clean up cell values
+            return typeof value === 'string' ? value.trim() : value;
+          },
+          beforeFirstChunk: (chunk) => {
+            // Skip the first two lines which are metadata
+            const lines = chunk.split('\n');
+            return lines.slice(2).join('\n');
+          },
           complete: (results) => {
             if (results.errors.length > 0) {
               console.error('Parsing errors:', results.errors);
-              setError('Error parsing CSV data');
-            } else {
-              const parsedData = results.data;
-
-              const questions = Object.keys(parsedData[0] || {}).filter(key =>
-                parsedData[0][key] &&
-                typeof parsedData[0][key] === 'string' &&
-                (parsedData[0][key].includes('Agree') || parsedData[0][key].includes('Disagree')) &&
-                !key.startsWith('Response') &&
-                !key.includes('ID')
-              );
-
-              const questionsWithStronglyAgree = questions.map(question => {
-                const stronglyAgreeCount = parsedData.filter(row =>
-                  row[question] === 'Strongly Agree'
-                ).length;
-                return { question, stronglyAgreeCount };
-              });
-
-              const sortedQs = questionsWithStronglyAgree
-                .sort((a, b) => b.stronglyAgreeCount - a.stronglyAgreeCount)
-                .map(item => item.question);
-
-              setData(parsedData);
-              setSortedQuestions(sortedQs);
-              setExecutiveSummary(calculateExecutiveSummary(parsedData, sortedQs));
+              // Only set error if there's a critical parsing issue
+              if (results.data.length === 0) {
+                setError('Error parsing CSV data');
+              }
             }
+
+            const parsedData = results.data.filter(row => {
+              // Filter out empty rows or rows with no valid responses
+              return Object.values(row).some(value => value && value.toString().trim().length > 0);
+            });
+
+            if (parsedData.length === 0) {
+              setError('No valid data found in CSV');
+              setLoading(false);
+              setIsSwitching(false);
+              return;
+            }
+
+            // Filter questions based on survey type
+            const questions = Object.keys(parsedData[0] || {}).filter(key => {
+              const isValidResponse = parsedData[0][key] &&
+                typeof parsedData[0][key] === 'string' &&
+                (parsedData[0][key].includes('Agree') || parsedData[0][key].includes('Disagree'));
+
+              const isMetadataField = key.startsWith('Response') ||
+                key.includes('ID') ||
+                ['First Name', 'Last Name', 'Title', 'Organization'].includes(key);
+
+              return isValidResponse && !isMetadataField;
+            });
+
+            // Sort questions by "Strongly Agree" percentage
+            const questionsWithStronglyAgree = questions.map(question => {
+              const stronglyAgreeCount = parsedData.filter(row =>
+                row[question] === 'Strongly Agree'
+              ).length;
+              return { question, stronglyAgreeCount };
+            });
+
+            const sortedQs = questionsWithStronglyAgree
+              .sort((a, b) => b.stronglyAgreeCount - a.stronglyAgreeCount)
+              .map(item => item.question);
+
+            setData(parsedData);
+            setSortedQuestions(sortedQs);
+            setExecutiveSummary(calculateExecutiveSummary(parsedData, sortedQs));
             setLoading(false);
+            setIsSwitching(false);
           },
           error: (error: Error) => {
             console.error('Error:', error);
             setError('Failed to parse CSV data');
             setLoading(false);
+            setIsSwitching(false);
           }
         });
       } catch (error) {
@@ -271,11 +432,12 @@ const SurveyVisualization = () => {
           setError('Failed to load CSV file');
         }
         setLoading(false);
+        setIsSwitching(false);
       }
     };
 
     loadData();
-  }, []);
+  }, [selectedSurvey]);
 
   const CustomTooltip: React.FC<TooltipProps> = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -320,17 +482,14 @@ const SurveyVisualization = () => {
 
   return (
     <div>
-      <button
-        onClick={onPrintClick}
-        className="fixed top-4 right-4 px-4 py-2 bg-navy text-white rounded-md hover:bg-opacity-90 z-50 no-print"
-      >
-        Export PDF
-      </button>
-      <div ref={componentRef} className="space-y-8 p-8 rounded-xl" style={{ backgroundColor: BRAND_COLORS.navy }}>
+      <SurveySelector />
+      <div ref={componentRef} className="space-y-8 p-8 pt-24 rounded-xl" style={{ backgroundColor: BRAND_COLORS.navy }}>
         {/* Executive Summary Section */}
         <div className="keep-together">
           <div className="mb-8">
-            <h1 className="text-5xl font-bold text-white text-center mb-8">Black History Retreat Impact Report</h1>
+            <h1 className="text-5xl font-bold text-white text-center mb-8">
+              {selectedSurvey === 'opening' ? 'Black History Retreat Impact Report' : 'Black Futures Retreat Impact Report'}
+            </h1>
 
             {/* Metrics Overview */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
@@ -383,18 +542,13 @@ const SurveyVisualization = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-white/90 space-y-4 px-6 pb-6">
-                <EditableText
-                  className="text-white/90 text-lg leading-relaxed"
-                  text={`The Black History Retreat survey results reveal a highly successful event, with ${executiveSummary.totalResponses} participants providing comprehensive feedback. The overall satisfaction rate of ${executiveSummary.overallSatisfaction}% 'Strongly Agree' responses across all categories indicates strong program effectiveness. Notably, the historical site visits and panel discussions received particularly positive feedback, with over ${executiveSummary.highestRated.percentage}% of participants strongly agreeing about their value.`}
-                />
-                <EditableText
-                  className="text-white/90 text-lg leading-relaxed"
-                  text="Participants especially appreciated the integration of historical knowledge with contemporary leadership challenges. The visit to Legacy Sites and the panel conversation with community leaders emerged as standout experiences. However, participants indicated a desire for more structured networking opportunities and peer connection time, suggesting an area for future enhancement."
-                />
-                <EditableText
-                  className="text-white/90 text-lg leading-relaxed"
-                  text="Key recommendations from participants include increasing dedicated time for peer interaction, developing follow-up support mechanisms, and creating more opportunities for regional cohort building. The feedback suggests that while the content and historical components were highly impactful, the retreat's networking and relationship-building aspects could be expanded in future iterations."
-                />
+                {getSurveyNarrativeSummary(selectedSurvey, executiveSummary).map((text, index) => (
+                  <EditableText
+                    key={index}
+                    className="text-white/90 text-lg leading-relaxed"
+                    text={text}
+                  />
+                ))}
               </CardContent>
             </Card>
           </div>
@@ -402,7 +556,9 @@ const SurveyVisualization = () => {
 
         {/* Event Team Debrief Agenda - Now with force-break */}
         <div className="force-break mb-16">
-          <h2 className="text-3xl font-bold text-white text-center mb-12">Black History Retreat Program Review</h2>
+          <h2 className="text-3xl font-bold text-white text-center mb-12">
+            {selectedSurvey === 'opening' ? 'Black History Retreat' : 'Black Futures Retreat'} Program Review
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="border-none rounded-xl shadow-lg transform hover:scale-105 transition-transform duration-200"
               style={{ backgroundColor: BRAND_COLORS.teal }}>
@@ -414,34 +570,12 @@ const SurveyVisualization = () => {
               </CardHeader>
               <CardContent className="px-6 pb-6">
                 <ul className="space-y-3">
-                  <li className="flex items-start text-white">
-                    <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
-                    <EditableText
-                      className="text-white"
-                      text="Analysis of highest-rated activities and their key success factors"
-                    />
-                  </li>
-                  <li className="flex items-start text-white">
-                    <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
-                    <EditableText
-                      className="text-white"
-                      text="Review of participant engagement levels across different sessions"
-                    />
-                  </li>
-                  <li className="flex items-start text-white">
-                    <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
-                    <EditableText
-                      className="text-white"
-                      text="Discussion of historical knowledge integration effectiveness"
-                    />
-                  </li>
-                  <li className="flex items-start text-white">
-                    <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
-                    <EditableText
-                      className="text-white"
-                      text="Assessment of connection-building opportunities"
-                    />
-                  </li>
+                  {getProgramReviewSections(selectedSurvey).impact.map((text, index) => (
+                    <li key={index} className="flex items-start text-white">
+                      <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
+                      <EditableText className="text-white" text={text} />
+                    </li>
+                  ))}
                 </ul>
               </CardContent>
             </Card>
@@ -456,34 +590,12 @@ const SurveyVisualization = () => {
               </CardHeader>
               <CardContent className="px-6 pb-6">
                 <ul className="space-y-4">
-                  <li className="flex items-start text-white">
-                    <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
-                    <EditableText
-                      className="text-white"
-                      text="Evaluation of participant feedback on session timing and pacing"
-                    />
-                  </li>
-                  <li className="flex items-start text-white">
-                    <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
-                    <EditableText
-                      className="text-white"
-                      text="Review of networking and relationship-building structures"
-                    />
-                  </li>
-                  <li className="flex items-start text-white">
-                    <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
-                    <EditableText
-                      className="text-white"
-                      text="Discussion of support mechanisms for implementation"
-                    />
-                  </li>
-                  <li className="flex items-start text-white">
-                    <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
-                    <EditableText
-                      className="text-white"
-                      text="Analysis of logistics and operational improvements"
-                    />
-                  </li>
+                  {getProgramReviewSections(selectedSurvey).enhancement.map((text, index) => (
+                    <li key={index} className="flex items-start text-white">
+                      <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
+                      <EditableText className="text-white" text={text} />
+                    </li>
+                  ))}
                 </ul>
               </CardContent>
             </Card>
@@ -498,34 +610,12 @@ const SurveyVisualization = () => {
               </CardHeader>
               <CardContent className="px-6 pb-6">
                 <ul className="space-y-4">
-                  <li className="flex items-start text-white">
-                    <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
-                    <EditableText
-                      className="text-white"
-                      text="Integration of successful elements into future retreats"
-                    />
-                  </li>
-                  <li className="flex items-start text-white">
-                    <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
-                    <EditableText
-                      className="text-white"
-                      text="Development of follow-up support strategies"
-                    />
-                  </li>
-                  <li className="flex items-start text-white">
-                    <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
-                    <EditableText
-                      className="text-white"
-                      text="Planning for enhanced peer connection opportunities"
-                    />
-                  </li>
-                  <li className="flex items-start text-white">
-                    <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
-                    <EditableText
-                      className="text-white"
-                      text="Discussion of resource allocation and timeline adjustments"
-                    />
-                  </li>
+                  {getProgramReviewSections(selectedSurvey).planning.map((text, index) => (
+                    <li key={index} className="flex items-start text-white">
+                      <div className="w-2 h-2 mt-2 mr-2 bg-white rounded-full" />
+                      <EditableText className="text-white" text={text} />
+                    </li>
+                  ))}
                 </ul>
               </CardContent>
             </Card>
@@ -534,8 +624,10 @@ const SurveyVisualization = () => {
 
         {/* Charts Section - Now 2 per row and forced to new page */}
         <div className="force-break">
-          <h2 className="text-3xl font-bold text-white text-center mb-12">Black History Retreat Participant Feedback</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <h2 className="text-3xl font-bold text-white text-center mb-12">
+            {selectedSurvey === 'opening' ? 'Black History Retreat' : 'Black Futures Retreat'} Participant Feedback
+          </h2>
+          <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${isSwitching ? 'opacity-50' : ''}`}>
             {sortedQuestions.map((question, index) => (
               <Card key={index}
                 className="border-none rounded-xl shadow-lg transform hover:scale-105 transition-transform duration-200 keep-together"
