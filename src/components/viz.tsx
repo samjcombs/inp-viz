@@ -343,11 +343,12 @@ const SurveyVisualization = () => {
     const loadData = async () => {
       try {
         setIsSwitching(true);
-        const filename = selectedSurvey === 'opening'
-          ? 'Black+History+Retreat+Survey+(Opening+Survey).csv'
-          : 'Black+Futures+Retreat+Survey+(Closing+Survey).csv';
+        const response = await fetch(`/api/survey?type=${selectedSurvey}`);
 
-        const response = await fetch(`/${filename}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch survey data');
+        }
+
         const text = await response.text();
 
         Papa.parse<SurveyData>(text, {
