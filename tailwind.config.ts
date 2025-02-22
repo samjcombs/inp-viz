@@ -11,6 +11,12 @@ export default {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        "inp-blue": "#2B4B6B",
+        "inp-teal": "#3AA99F",
+        "inp-burgundy": "#A4264C",
+      },
+      fontFamily: {
+        lato: ["Lato", "sans-serif"],
       },
     },
   },
