@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, MouseEvent } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useReactToPrint } from 'react-to-print';
-import Papa from 'papaparse';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import {
   Users,
@@ -146,23 +145,33 @@ const SurveyVisualization = () => {
     if (!parsedData.length || !questions.length) return null;
 
     const totalResponses = parsedData.length;
-    const stronglyAgreePercentages = questions.map(question => {
-      const responses = parsedData.filter(row => row[question] === 'Strongly Agree').length;
+    const satisfactionPercentages = questions.map(question => {
+      const responses = parsedData.filter(row =>
+        row[question] === 'Strongly Agree' ||
+        row[question] === 'Agree'
+      ).length;
+      return Math.round((responses / totalResponses) * 100);
+    });
+
+    const roomForImprovementPercentages = questions.map(question => {
+      const responses = parsedData.filter(row =>
+        row[question] === 'Disagree'
+      ).length;
       return Math.round((responses / totalResponses) * 100);
     });
 
     const highestRated = {
       question: questions[0],
-      percentage: stronglyAgreePercentages[0]
+      percentage: satisfactionPercentages[0]
     };
 
     const lowestRated = {
       question: questions[questions.length - 1],
-      percentage: stronglyAgreePercentages[questions.length - 1]
+      percentage: roomForImprovementPercentages[questions.length - 1]
     };
 
     const overallSatisfaction = Math.round(
-      stronglyAgreePercentages.reduce((a, b) => a + b, 0) / stronglyAgreePercentages.length
+      satisfactionPercentages.reduce((a, b) => a + b, 0) / satisfactionPercentages.length
     );
 
     return {
@@ -349,88 +358,50 @@ const SurveyVisualization = () => {
           throw new Error('Failed to fetch survey data');
         }
 
-        const text = await response.text();
+        const parsedData = await response.json();
+        console.log('Received data length:', parsedData.length);
 
-        Papa.parse<SurveyData>(text, {
-          header: true,
-          skipEmptyLines: 'greedy',
-          encoding: 'UTF-8',
-          transformHeader: (header) => {
-            // Clean up header by removing quotes and special characters
-            return header.replace(/["']/g, '').trim();
-          },
-          transform: (value) => {
-            // Clean up cell values
-            return typeof value === 'string' ? value.trim() : value;
-          },
-          beforeFirstChunk: (chunk) => {
-            // Skip the first two lines which are metadata
-            const lines = chunk.split('\n');
-            return lines.slice(2).join('\n');
-          },
-          complete: (results) => {
-            if (results.errors.length > 0) {
-              console.error('Parsing errors:', results.errors);
-              // Only set error if there's a critical parsing issue
-              if (results.data.length === 0) {
-                setError('Error parsing CSV data');
-              }
-            }
+        if (parsedData.length === 0) {
+          setError('No valid data found');
+          setLoading(false);
+          setIsSwitching(false);
+          return;
+        }
 
-            const parsedData = results.data.filter(row => {
-              // Filter out empty rows or rows with no valid responses
-              return Object.values(row).some(value => value && value.toString().trim().length > 0);
-            });
+        // Filter questions based on survey type
+        const questions = Object.keys(parsedData[0] || {}).filter(key => {
+          const isValidResponse = parsedData[0][key] &&
+            typeof parsedData[0][key] === 'string' &&
+            (parsedData[0][key].includes('Agree') || parsedData[0][key].includes('Disagree'));
 
-            if (parsedData.length === 0) {
-              setError('No valid data found in CSV');
-              setLoading(false);
-              setIsSwitching(false);
-              return;
-            }
+          const isMetadataField = key.startsWith('Response') ||
+            key.includes('ID') ||
+            ['First Name', 'Last Name', 'Title', 'Organization'].includes(key);
 
-            // Filter questions based on survey type
-            const questions = Object.keys(parsedData[0] || {}).filter(key => {
-              const isValidResponse = parsedData[0][key] &&
-                typeof parsedData[0][key] === 'string' &&
-                (parsedData[0][key].includes('Agree') || parsedData[0][key].includes('Disagree'));
-
-              const isMetadataField = key.startsWith('Response') ||
-                key.includes('ID') ||
-                ['First Name', 'Last Name', 'Title', 'Organization'].includes(key);
-
-              return isValidResponse && !isMetadataField;
-            });
-
-            // Sort questions by "Strongly Agree" percentage
-            const questionsWithStronglyAgree = questions.map(question => {
-              const stronglyAgreeCount = parsedData.filter(row =>
-                row[question] === 'Strongly Agree'
-              ).length;
-              return { question, stronglyAgreeCount };
-            });
-
-            const sortedQs = questionsWithStronglyAgree
-              .sort((a, b) => b.stronglyAgreeCount - a.stronglyAgreeCount)
-              .map(item => item.question);
-
-            setData(parsedData);
-            setSortedQuestions(sortedQs);
-            setExecutiveSummary(calculateExecutiveSummary(parsedData, sortedQs));
-            setLoading(false);
-            setIsSwitching(false);
-          },
-          error: (error: Error) => {
-            console.error('Error:', error);
-            setError('Failed to parse CSV data');
-            setLoading(false);
-            setIsSwitching(false);
-          }
+          return isValidResponse && !isMetadataField;
         });
+
+        // Sort questions by "Strongly Agree" percentage
+        const questionsWithStronglyAgree = questions.map(question => {
+          const stronglyAgreeCount = parsedData.filter((row: SurveyData) =>
+            row[question] === 'Strongly Agree'
+          ).length;
+          return { question, stronglyAgreeCount };
+        });
+
+        const sortedQs = questionsWithStronglyAgree
+          .sort((a, b) => b.stronglyAgreeCount - a.stronglyAgreeCount)
+          .map(item => item.question);
+
+        setData(parsedData);
+        setSortedQuestions(sortedQs);
+        setExecutiveSummary(calculateExecutiveSummary(parsedData, sortedQs));
+        setLoading(false);
+        setIsSwitching(false);
       } catch (error) {
         if (error instanceof Error) {
-          console.error('Error loading file:', error);
-          setError('Failed to load CSV file');
+          console.error('Error loading data:', error);
+          setError('Failed to load data');
         }
         setLoading(false);
         setIsSwitching(false);
@@ -453,6 +424,27 @@ const SurveyVisualization = () => {
       );
     }
     return null;
+  };
+
+  const calculateAveragePercentage = (data: SurveyData[], responseType: string) => {
+    const questions = Object.keys(data[0] || {}).filter(key => {
+      const isValidResponse = data[0][key] &&
+        typeof data[0][key] === 'string' &&
+        (data[0][key].includes('Agree') || data[0][key].includes('Disagree'));
+
+      const isMetadataField = key.startsWith('Response') ||
+        key.includes('ID') ||
+        ['First Name', 'Last Name', 'Title', 'Organization'].includes(key);
+
+      return isValidResponse && !isMetadataField;
+    });
+
+    const percentages = questions.map(question => {
+      const responses = data.filter(row => row[question] === responseType).length;
+      return (responses / data.length) * 100;
+    });
+
+    return Math.round(percentages.reduce((a, b) => a + b, 0) / percentages.length);
   };
 
   if (loading) {
@@ -510,12 +502,26 @@ const SurveyVisualization = () => {
               <Card className="border-none rounded-xl shadow-lg transform hover:scale-105 transition-transform duration-200"
                 style={{ backgroundColor: BRAND_COLORS.burgundy }}>
                 <CardContent className="p-8">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-white/80 text-lg mb-2">Overall Satisfaction</p>
-                      <p className="text-4xl font-bold text-white">{executiveSummary.overallSatisfaction}%</p>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white/80 text-lg mb-2">Overall Satisfaction</p>
+                        <p className="text-4xl font-bold text-white">{executiveSummary.overallSatisfaction}%</p>
+                      </div>
+                      <ArrowUp className="w-16 h-16 text-white/80" />
                     </div>
-                    <ArrowUp className="w-16 h-16 text-white/80" />
+                    <div className="text-white/90 text-sm mt-4">
+                      <ul className="space-y-1">
+                        <li className="flex justify-between">
+                          <span>Strongly Agree:</span>
+                          <span>{calculateAveragePercentage(data, 'Strongly Agree')}%</span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Agree:</span>
+                          <span>{calculateAveragePercentage(data, 'Agree')}%</span>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -523,12 +529,28 @@ const SurveyVisualization = () => {
               <Card className="border-none rounded-xl shadow-lg transform hover:scale-105 transition-transform duration-200"
                 style={{ backgroundColor: BRAND_COLORS.orange }}>
                 <CardContent className="p-8">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-white/80 text-lg mb-2">Areas for Growth</p>
-                      <p className="text-4xl font-bold text-white">{executiveSummary.lowestRated.percentage}%</p>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white/80 text-lg mb-2">Areas for Growth</p>
+                        <p className="text-4xl font-bold text-white">
+                          {calculateAveragePercentage(data, 'Somewhat Agree') + calculateAveragePercentage(data, 'Disagree')}%
+                        </p>
+                      </div>
+                      <Target className="w-16 h-16 text-white/80" />
                     </div>
-                    <Target className="w-16 h-16 text-white/80" />
+                    <div className="text-white/90 text-sm mt-4">
+                      <ul className="space-y-1">
+                        <li className="flex justify-between">
+                          <span>Somewhat Agree:</span>
+                          <span>{calculateAveragePercentage(data, 'Somewhat Agree')}%</span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Disagree:</span>
+                          <span>{calculateAveragePercentage(data, 'Disagree')}%</span>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

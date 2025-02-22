@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
+import { parseSurveyCSV } from "./utils";
 
 export async function GET(request: Request) {
   try {
@@ -19,26 +18,12 @@ export async function GET(request: Request) {
         ? "Black+History+Retreat+Survey+(Opening+Survey).csv"
         : "Black+Futures+Retreat+Survey+(Closing+Survey).csv";
 
-    // Use path relative to the API route directory
-    const filePath = path.join(
-      process.cwd(),
-      "src/app/api/survey/_data",
-      filename
-    );
-    console.log("Attempting to read file from:", filePath);
-
-    const fileContents = await fs.readFile(filePath, "utf8");
-
-    return new NextResponse(fileContents, {
-      headers: {
-        "Content-Type": "text/csv",
-        "Cache-Control": "no-store",
-      },
-    });
+    const result = await parseSurveyCSV(filename);
+    return NextResponse.json(result.data);
   } catch (error) {
-    console.error("Error reading survey file:", error);
+    console.error("Error processing survey data:", error);
     return NextResponse.json(
-      { error: "Failed to load survey data" },
+      { error: "Failed to process survey data" },
       { status: 500 }
     );
   }
